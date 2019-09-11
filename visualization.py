@@ -63,7 +63,7 @@ def plot_specto(data, subset=None, vmin=-151):
     ax1.xaxis.set_major_formatter(xticks)
 
 
-def save_specto(data, filename, filepath=None, subset=None, vmin=-151):
+def save_specto(data, filename, filepath=None, subset=None, vmin=-151, vmax=None):
     if not subset:
         subset = len(data)
     if not filepath:
@@ -80,13 +80,18 @@ def save_specto(data, filename, filepath=None, subset=None, vmin=-151):
     fig, ax1 = plt.subplots(figsize=(22.4, 22.4))
     samples = np.array(data[:subset].index + 1)
     values = data[:subset]
-    
-    Pxx, freqs, bins, im = ax1.specgram(values, Fs=sample_rate, vmin=vmin)
 
+    max_value = 10 * np.log2(values.max())
+    
+    if max_value < vmin:
+        vmax = vmin + 20
+
+    Pxx, freqs, bins, im = ax1.specgram(values, Fs=sample_rate, vmin=vmin, vmax=vmax)
     fig.patch.set_visible(False)
     ax1.axis('off')
-
     fig.savefig('{}/{}'.format(filepath, filename), dpi=10)
+
+
     plt.close(fig)
 
 
