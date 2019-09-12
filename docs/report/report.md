@@ -7,7 +7,7 @@ September 13th, 2019
 
 ### Project Overview
 
-Overhead power lines are susceptible to various outside influences like tree branches falling onto the line, mechanical damage through material fatigue, etc. 
+Overhead power lines are susceptible to various external influences like tree branches falling onto the line, mechanical damage through material fatigue, etc. 
 
 Failing power lines can lead to power outages, cutting of whole rural villages and cities from electricity supply, or even worse, line faults can cause fires through heat caused by power resistance and discharges.
 
@@ -23,7 +23,6 @@ Therefore a solution is needed that relies solely on analysis of sensor data (co
 [[2]](https://en.wikipedia.org/wiki/Partial_discharge) `Whenever partial discharge is initiated, high frequency transient current pulses will appear and persist for nanoseconds to a microsecond, then disappear and reappear repeatedly as the voltage sinewave goes through the zero crossing`
 
 The problem of discovering damages on overhead power lines can therefore be solved by analyzing the sensor data, finding PD patterns and distinguish them from other patterns e.g. caused by corona discharge and other commonly found external influences to the power line.
-
 
 ### Metrics
 
@@ -47,9 +46,9 @@ So, Precision is an indicator of how many times the model misclassified the line
 
 In addition I will calculate 3 additional metrics: Accuracy, F1-Score and MCC. 
 
-Accuracy will tell how the ratio of correctly classified samples out of the total number of samples. Accuracy is actually not a good metric to look at with the Dataset I use in this project. I will go into details of this dataset in the later chapters, but what can be said here is that the dataset is highly imbalanced with only 6.41% of the samples in the available training dataset being positives (525 positive and 8187 negative training samples). Therefore the number of true negatives will be very high generating a high accuracy score. I will however include it for completeness.
+Accuracy will tell us the ratio of correctly classified samples out of the total number of samples. Accuracy is actually not a good metric to look at with the Dataset I use in this project. I will go into details of this dataset in the later chapters, but what can be said here is that the dataset is highly imbalanced with only 6.41% of the samples in the available training dataset being positives (525 positive and 8187 negative training samples). Therefore the number of true negatives will be very high, generating a high accuracy score. I will however include it for completeness.
 
-F1-Score is a better metric for this project, as it balances Precision and Recall, which are the two metrics giving us a good indication on the costs associated with our models false predictions:
+F1-Score is a better metric for this project, as it balances Precision and Recall, which are the two metrics giving us a good indication on the costs associated with my models false predictions:
 
 <img src="https://latex.codecogs.com/svg.latex?\Large&space;F1=2*\frac{(Precision*Recall)}{(Precision+Recall)}"/>  
 
@@ -87,7 +86,7 @@ Here's an example of what the first 10 rows of the training metadata looks like:
 
 <img src="content/training_metadata_example.png"/>
 
-The targets where manually classified by a domain expert that looked at noise patterns present in the data. If the sample is showing a PD pattern, the target is set to 1, if any other or no disturbance pattern is preset the target is set to 0. Each of the 3 phases is treated independently, so a PD pattern might be present on one of the phases, but might not be present in another. Only the training metadata is labeled with targets. The test dataset is part of the Kaggle competition and the targets are therefore hidden from public. 
+The targets (truth labels) where manually classified by a domain expert that looked at noise patterns present in the data. If the sample is showing a PD pattern, the target is set to 1, if any other or no disturbance pattern is preset the target is set to 0. Each of the 3 phases is treated independently, so a PD pattern might be present on one of the phases, but might not be present in another. Only the training metadata is labeled with targets. The test dataset is part of the Kaggle competition and the targets are therefore hidden from public. 
 
 The data is imbalanced, as it contains only 525 true positives in 8711 samples.
 
@@ -103,14 +102,14 @@ When looking at the data in a graphical way, a simple plot of the signal amplitu
 
 Looking at these two plots we can make a couple of observations:
 
-1) The measurement devices are not synchronized with the power grids 50Hz phase. As you can see in the two examples, while the sample covers one sine wave, the start and end of each measurement is not synchronized with a specific state of the 50Hz sine wave. This is an important observation as the PD pattern is expected to happen as the voltage sinewave goes through the zero crossing. Therefore to make the samples comparable I had to shift the samples so that they all start / end at the zero crossing.
-2) In the first example the PD pattern is well distinctive and high frequency pulses are visible before and after the zero crossing.
+1) The measurement devices are not synchronized with the power grids 50Hz phase. As you can see in the two examples, while the sample covers one sine wave, the start and end of each measurement is not synchronized with a specific state of the 50Hz sine wave. This is an important observation as the PD pattern is expected to happen as the voltage sinewave goes from the zero crossing to the max. voltage. Therefore to make the samples comparable I had to shift the samples so that they all start / end at the zero crossing.
+2) In the first example the PD pattern is well distinctive and high frequency pulses are visible at the expected positions of the 50Hz sinewave.
 3) The second example shows very well what corona discharges look like. The corona discharges are visible as high amplitude high frequency pulses.
 4) Both examples show the always present low amplitude noise e.g. caused by radio stations and the likes
 
 Not all samples are as easy to interpret as the two I choose to present here. In general it is very difficult for non-experts to distinguish PD from corona discharges and other noise.
 
-Another visualization technique I extensively made use of is to look at the data using a spectogram. Here is the spectogram of the first example (signal_id 333) that has a PD pattern present:
+Another visualization technique I extensively made use of is to look at the data using a spectogram. Here is the spectogram of the first example (signal_id 201) that has a PD pattern present:
 
 
 **signal_id 201:** Spectogram
@@ -121,7 +120,7 @@ This function uses Fast Fourier transform [[5]](https://en.wikipedia.org/wiki/Fa
 
 ### Algorithms and Techniques
 
-As you will read in the Benchmark section of this document, the existing work of the University of Ostrava tested the use of the random forest algorithm to detect PD patterns in the samples. In my project I wanted to see if I can achieve similar or better results using various neural networks.
+As you will read in the Benchmark section of this document, the existing work of the University of Ostrava tested the use of the random forest algorithm to detect PD patterns in the samples. In my project I wanted to see if I can achieve similar or better results using various neural network implementations.
 
 Most of the work in this project went into preprocessing the data so that it can be feed into a neural network to predict whether a PD pattern is present in the sample or not. Here's a general overview:
 
@@ -129,11 +128,11 @@ Most of the work in this project went into preprocessing the data so that it can
 
 **Step 1)** As briefly mentioned in the last section, to make the samples comparable in the time domain, the sample data needs to be shifted so that the start and end of the sample is at the zero crossing of the 50Hz sinewave. I will go into more details of how this was done in the 'Data Preprocessing' section of this document
 
-**Step 2)** Fault pattern usually exists in high frequency band. According to literature, the pattern is visible above 10^4 Hz, therefore I used a Butterworth filter [[6]](https://en.wikipedia.org/wiki/Butterworth_filter) to remove all frequencies bellow 10^4 Hz. This removes the 50Hz sinewave and other low frequency signals. Then the signal is cleaned from low amplitude noise like radio transmissions with the use of wavelet decomposition and thresholding [[7]](http://connor-johnson.com/2016/01/24/using-pywavelets-to-remove-high-frequency-noise/)
+**Step 2)** Fault patterns usually exists in high frequency band. According to literature, the PD pattern is visible above 10^4 Hz, therefore I used a Butterworth filter [[6]](https://en.wikipedia.org/wiki/Butterworth_filter) to remove all frequencies bellow 10^4 Hz. This removes the 50Hz sinewave and other low frequency signals. Then the signal is cleaned from low amplitude noise like radio transmissions with the use of wavelet decomposition and thresholding [[7]](http://connor-johnson.com/2016/01/24/using-pywavelets-to-remove-high-frequency-noise/)
 
 **Step 3)** As the training dataset is imbalanced I used undersampling. I selected all samples labeled as positives, and a subset of random samples from 4 bins categorized by the number of amplitude peaks found in the samples.
 
-**Step 4)** I used two different data reduction techniques and compared the results using a Convolutional Neural Network (CNN). The first technique used is principle component analysis (PCA). I then directly feed the resulting 325 PCA features into a one dimensional CNN as input. The other technique I used was to generate 224x224x3 (RGB) spectograms using matplotib, store them as .png images and feed those into a two dimensional CNN as input
+**Step 4)** I used two different data reduction techniques and compared the results using Neural Networks. The first technique used is principle component analysis (PCA). I then directly feed the resulting 325 PCA features into Dense network or a one dimensional CNN as input. The other technique I used was to generate 224x224x3 (RGB) spectograms using matplotib, store them as .png images, and feed those into a two dimensional CNN as input
 
 **Step 5)** The reduced data is feed into 4 different types of neural networks. I explored the combination of PCA with a Dense Neural Network, PCA with a 1D CNN, Spectogram pictures with a 2D CNN and Spectogram pictures with a 2D CNN using transfer learning from the VGG16 neural network.
 
@@ -172,9 +171,7 @@ The data preprocessing was key in this project, and a lot of effort went into it
 **Step 2)** Using a Butterworth filter [[6]](https://en.wikipedia.org/wiki/Butterworth_filter) I remove all frequencies bellow 10^4 Hz. Then using wavelet decomposition and thresholding [[7]](http://connor-johnson.com/2016/01/24/using-pywavelets-to-remove-high-frequency-noise/) I filter out low amplitude noise from the sample.
 
 **Step 3)** The datapoints (0, 50000), (300000, 450000), (700000, 800000) are cut away from the sample, reducing each sample to 500.000 data points. This is done as the occurrence of the PD patterns is not expected at these locations.
-
 PD patterns are only seen at specific locations on the 50Hz base sinewave.
-
 
 [[9]](http://www.hitequest.com/Kiss/hv_isolation.htm)
 <img src="content/pd_sine.jpg"/>
@@ -188,7 +185,7 @@ To be able to select relevant training samples from the training data I decided 
 
 I then selected all 525 PD positive samples and added 525 random samples from each of the 4 bins resulting in a dataset with 2625 samples.
 
-As the next step I reduced the features from the 500.000 measurements per sample down to something I cold use as an input to a neural network. I tested two very different approaches whose results I will discuss in the later parts of this document. The first approach was to use Principal Component Analysis (PCA), the second was to generate small 244x224x3 (RGB) sized spectogram pictures from the samples.
+As the next step I reduced the features from the 500.000 measurements per sample down to something I could use as an input to a neural network. I tested two very different approaches whose results I will discuss in the later parts of this document. The first approach was to use Principal Component Analysis (PCA), the second was to generate small 244x224x3 (RGB) sized spectogram pictures from the samples.
 
 For the PCA approach I first searched for the minimum number of components to use. Using the `explained_variance_ratio_` method I looked for the number of features where the percentage of variance explained did not improve anymore:
 
@@ -270,7 +267,7 @@ I initially started with a dropout rate of 0.5 between the layers. Reducing it t
 
 #### PCA + 1D CNN implementation
 
-I initially used Dropouts in the 1D CNN too. However I saw better results when not using Dropouts at all. I less nodes to begin with when training the models on a CPU, after moving to Google colab and having GPU support I achieved better results with using more nodes.
+I initially used Dropouts in the 1D CNN too. However I saw better results when not using Dropouts at all. I used less nodes to begin with when training the models on a CPU, but after moving to Google colab and having GPU support I achieved better results with using more nodes.
 
 #### Spectogram pictures + 2D CNN implementation
 
@@ -309,7 +306,7 @@ Here are the results if the Kaggle submissions using the predictions done on the
 
 The private leaderboard is calculated with approximately 43% of the test data, the public leaderboard is calculated with the rest 57% of the test data
 
-As one can see the final MCC scores using the test dataset are not as good as the MCC scores of the validation dataset. This shows me that I would need to invest more time to make the spectogram/CNN approach generalize better. My goal of being in the mid-range of the Kaggle leaderboard was almost achieved, as the lowest score in the private leaderboard was 0.0, and the highest was 0.71899, putting me slightly above the mid-range with my results. 
+As one can see the final MCC scores using the test dataset are not as good as the MCC scores of the validation dataset. This shows me that I would need to invest more time to make the spectogram/CNN approach generalize better. My goal of being in the mid-range of the Kaggle leaderboard was however achieved, as the lowest score in the private leaderboard was 0.0, and the highest was 0.71899, putting me slightly above the mid-range with my results. 
 
 ### Justification
 
@@ -344,22 +341,22 @@ and be used as an input for a machine learning approach
 
 ### Reflection
 
-The most important part of this project was the exploration of the dataset and the work that went into developing an understanding of the problem domain.
+The most important part of this project was the exploration of the dataset, and the work that went into developing an understanding of the problem domain.
 
 The key to the project was the initial filtering of the data using technologies like Butterworth filters and Wavelet decomposition. 
 
-The analysis of the problem in the time and frequency domain was the most challenging aspect of the project, but also the part where I learned the most. This is where I came to the conclusion that instead of using feature extraction techniques like PCA one could also use tools developed to visualize the time/frequency domain to generate input for neural networks used today mostly for image recognition problems.
+The analysis of the problem in the time and frequency domain was the most challenging aspect of the project, but also the part where I learned the most. This is where I came to the conclusion that instead of using feature extraction techniques like PCA, one could also use tools developed to visualize the time/frequency domain to generate input for neural networks used today mostly for image recognition problems.
 
 It is fascinating to see how Convolutional Neural Networks are able to discover patterns in images like the spectograms, and achieve good classification results for time/frequency problems even when they where originally trained to e.g. distinguish cats from dogs. 
 
 
 ### Improvement
 
-There are a number of things I would have easily be able to spend another couple of weeks to refine and improve in this project.
+There are a number of improvement I could easily spend another couple of weeks with to refine this project.
 
-The solution I choose using 'manual' undersampling and select samples based on categories composed by counting the number of amplitude peaks seems to work. However I would also like to test oversampling solutions like SMOTE or maybe look into various clustering technologies to create better 'bins' of samples. This might be a key improvement to make the solution generalize better.
+The solution I choose using 'manual' undersampling and selecting samples based on categories built by counting the number of amplitude peaks seems to work. However I would also like to test oversampling solutions like SMOTE, or maybe look into various clustering technologies to create better 'bins' of samples. This might be a key improvement to make the solution generalize better.
 
-Another part that I invested significant time in but had to give up on is to develop better ways to create spectogram pictures. The matplolib function I'm currently using [[4]](https://matplotlib.org/3.1.1/api/_as_gen/matplotlib.pyplot.specgram.html) is based on Fast Fourier transform [[5]](https://en.wikipedia.org/wiki/Fast_Fourier_transform). I'm expecting better results when using Continous Wavelet Transform (CWT) [[11]](https://en.wikipedia.org/wiki/Continuous_wavelet_transform) to generate spectogram pictures. However the only open source implementation I found was pywavelet (pywt) [[12]](https://pywavelets.readthedocs.io/en/latest/) and it's capabilities are still pretty bare bones. I could have looked into using a solution using MathWorks Wavelet tools [[13]](https://www.mathworks.com/help/wavelet/ug/time-frequency-analysis-and-continuous-wavelet-transform.html), but I did not want to include tools in this project for which I need a trial license. I am very confident that I could significantly improve the results by using CWT instead of FFT with windowing. 
+Another part that I invested significant time in, but had to give up finalizing, is to develop better ways to create spectogram pictures. The matplolib function I'm currently using [[4]](https://matplotlib.org/3.1.1/api/_as_gen/matplotlib.pyplot.specgram.html) is based on Fast Fourier transform [[5]](https://en.wikipedia.org/wiki/Fast_Fourier_transform). I'm expecting better results when using Continous Wavelet Transform (CWT) [[11]](https://en.wikipedia.org/wiki/Continuous_wavelet_transform) to generate spectogram pictures. However the only open source python implementation I found was pywavelet (pywt) [[12]](https://pywavelets.readthedocs.io/en/latest/), and it's capabilities are still pretty bare bones. I could have looked into using a solution using MathWorks Wavelet tools [[13]](https://www.mathworks.com/help/wavelet/ug/time-frequency-analysis-and-continuous-wavelet-transform.html), but I did not want to include tools in this project for which I need a trial license. I am very confident that I could significantly improve the results by using CWT instead of FFT with windowing. 
 
 Also, generating spectogram pictures with higher resolutions, combined with CNNs that can handle larger inputs might improve the implementation. 
 
