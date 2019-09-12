@@ -1,0 +1,88 @@
+Steps needed to re-create the environment
+-----------------------------------------
+
+I'm using Conda to create environments. 
+Use Conda and PIP to install the requirements outlined in the requirements.txt of this repo.
+Here are the needed libraries for completeness:
+
+numpy=1.16.4
+pandas=0.24.2
+pywavelets=1.0.3
+scipy=1.3.0
+keras=2.2.4
+matplotlib=3.1.1
+pyarrow=0.13.0
+seaborn=0.9.0
+scikit-learn=0.21.3
+tensorflow=1.13.1
+tqdm=4.35.0
+
+After installing the libraries, create a `Data` Folder in the top level directory that also holds
+all notebooks (likely the repo that you cloned). Download the Kaggle competition datasets from:
+https://www.kaggle.com/c/vsb-power-line-fault-detection/data
+
+Please Note that this is approx. 10GB of Data that will be downloaded and stored onto your machine!
+
+You should now have these files in your Data Folder:
+train.parquet
+test.parquet
+metadata_train.csv
+metadata_test.csv
+
+Next open the Notebook named `Train Data exploration.ipynb`, and run it to look at the visualization.
+
+Next open `Train Data Filtering.ipynb` and run it. PLEASE NOTE: This will create 9 additional Files,
+each 4.28GB in size. It will lead to significant memory consumption on your machine and run for a long time.
+On my machine that has 16GB of RAM and a decent CPU it ran for approx. 3h.
+
+After the Filtering is done, open the notebook `Train Data Undersampling.ipynb` and run it. PLEASE NOTE: 
+This will again create a 11.23GB sized File on your machine and run for a long time.
+
+Next run `PCA feature reduction.ipynb`. This will create various smaller sized csv files containing 
+the reduced features. Again, this will take significant amount of time to complete.
+
+Before you can run the spectogram creation notebook, you will need to manually create a couple of folders
+within the Data Folder:
+
+train_spectograms/
+  pd_negative/
+  pd_positive/
+valid_spectograms/
+  pd_negative/
+  pd_positive/
+
+Now compress (zip) the whole Data/*_spectograms/* Folders including all created png images into a zip file
+called spectograms.zip.
+
+Now Run `Train Batch Spectogram Image Creation.ipynb`. This will create the spectograms and place them in
+the folders you created in the last step.
+
+As all the training notebooks where run on Google Colabs, you will need to run them there, or adapt the 
+Notebooks to run in your environment (that hopefully has GPUs). Before you can start, you will need to upload 
+these initial files to your Google Drive into the 'Colab Notebooks' Folder (It gets created when you save the first Notebook):
+
+pca_train_data.csv
+select_train_meta.csv
+spectograms.zip
+
+You should now be able to run all training notebooks in Google CoLab:
+`Dense Network with PCA.ipynb`
+`Convolutional Neural Network 1D with PCA.ipynb`
+`Convolutional Neural Network 2D with Spectograms.ipynb`
+`Transfer Learning CNN with Spectograms.ipynb`
+
+If you also want to run the Test Workbooks and submit your results to Kaggle you need to run:
+`Test Data Filtering.ipynb`. 
+PLEASE NOTE: This will create 22 additional parquet files, each 4.28GB in size on your Disk. 
+
+Then create the folder:
+Data/test_spectograms/
+
+run `Test Batch Spectogram Image Creation.ipynb` (Creates approx. 600MB of Images)
+
+zip the Folder Data/test_spectograms/* to test_spectograms.zip (651MB) and upload it to Google CoLab.
+
+Run `Kaggle Test prediction - Transfer Learning.ipynb` in Google CoLab (or your environment). 
+This will create the File `kaggle_submission_transfer_learning.csv` in your Google Drive that you can use to
+submit the results to Kaggle. You can also do the same with the `Kaggle Test prediction.ipynb` that uses the 
+non-transfer learning approach.
