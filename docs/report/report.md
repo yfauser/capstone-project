@@ -70,7 +70,7 @@ The Kaggle competitions Test Dataset does not have public available truth labels
 
 As part of a Kaggle competition, the Technical University of Ostrava (Czech Republic) provided sensory data of medium voltage power lines [[3]](https://www.kaggle.com/c/vsb-power-line-fault-detection/data). The data was obtained from a low cost sensor (metering) device developed at the University and mounted at 20 different location within a region in the Czech Republic. The data was gathered from a real life power distribution network, and is therefore noisy because of real world disturbances caused by the power lines acting as antennas for electromagnetic signals generated in proximity of the power lines like radio stations, nearby lightning strikes and corona discharges.
 
-The dataset is divided into one training and one test dataset available in the Apache Parquet format. Other than is most datasets each column instead of each row is containing one sample. Each sample (each column) has 800,000 measurements taken during a 20 millisecond time windows which equates to one complete grid cycle of the 3 phases measured. 
+The dataset is divided into one training and one test dataset available in the Apache Parquet format. The datasets are significantly large in terms of size on disk with 3.81 GB for the training, and 8.81 GB for the test dataset. Other than is most datasets each column instead of each row is containing one sample. Each sample (each column) has 800,000 measurements taken during a 20 millisecond time windows which equates to one complete grid cycle of the 3 phases measured. 
 
 Here is an example of what the first 5 rows of the training data look like:
 
@@ -281,49 +281,125 @@ The model I initially choose performed pretty well from the beginning on. I adde
 I tested several pre-trained networks, always exchanging the final categorical layers with the two 128 node dense layers I described earlier. I tested ResNet50, ResNeXt50, VGG16, VGG19 and InceptionV3. I had the best results using VGG16 and choose it as my final model.
 
 ## IV. Results
-_(approx. 2-3 pages)_
 
 ### Model Evaluation and Validation
-In this section, the final model and any supporting qualities should be evaluated in detail. It should be clear how the final model was derived and why this model was chosen. In addition, some type of analysis should be used to validate the robustness of this model and its solution, such as manipulating the input data or environment to see how the model’s solution is affected (this is called sensitivity analysis). Questions to ask yourself when writing this section:
-- _Is the final model reasonable and aligning with solution expectations? Are the final parameters of the model appropriate?_
-- _Has the final model been tested with various inputs to evaluate whether the model generalizes well to unseen data?_
-- _Is the model robust enough for the problem? Do small perturbations (changes) in training data or the input space greatly affect the results?_
-- _Can results found from the model be trusted?_
+
+I validated the training of every model described in the implementation section with 20% of the original training data. 
+As discussed already, the Kaggle competition provides a large test dataset with 20.336 test samples. However the test dataset doesn't include the truth labels in the test metadata. Therefore I was only able to calculate the Accuracy, Precision, Recall and F1-Score only using the validation data carved out from the training dataset. For the test dataset I have the MCC score for the final two models I choose to be evaluated in the competition.
+
+Here are the validation results for the various models:
+
+| Input data / model   | Accuracy | Recall | Precision | F1-Score | MCC    |
+|:---------------------|:---------|:-------|:----------|:---------|:-------|
+| PCA / Dense Net      | 0.8038   | 0.5377 | 0.7775    | 0.5189   | 0.2045 |
+| PCA / 1D CNN         | 0.8476   | 0.6804 | 0.8067    | 0.7138   | 0.4705 |
+| Spectograms / 2D CNN | 0.8838   | 0.8066 | 0.8185    | 0.8123   | 0.6250 |
+| Spectograms / VGG16  | 0.9086   | 0.8477 | 0.8584    | 0.8529   | 0.7060 |
+
+<img src="content/results_barcharts.png" />
+
+I only evaluated the two spectogram based models using the test dataset as the results using the validation dataset where better using those implementations.
+
+Here are the results if the Kaggle submissions using the predictions done on the test dataset:
+
+| Input data / model   | MCC private leaderboard | MCC public leaderboard |
+|:---------------------|:------------------------|:-----------------------|
+| Spectograms / 2D CNN | 0.41760                 | 0.33451                |
+| Spectograms / VGG16  | 0.41149                 | 0.31039                |
+
+The private leaderboard is calculated with approximately 43% of the test data, the public leaderboard is calculated with the rest 57% of the test data
+
+As one can see the final MCC scores using the test dataset are not as good as the MCC scores of the validation dataset. This shows me that I would need to invest more time to make the spectogram/CNN approach generalize better. My goal of being in the mid-range of the Kaggle leaderboard was almost achieved, as the lowest score in the private leaderboard was 0.0, and the highest was 0.71899, putting me slightly above the mid-range with my results. 
 
 ### Justification
-In this section, your model’s final solution and its results should be compared to the benchmark you established earlier in the project using some type of statistical analysis. You should also justify whether these results and the solution are significant enough to have solved the problem posed in the project. Questions to ask yourself when writing this section:
-- _Are the final results found stronger than the benchmark result reported earlier?_
-- _Have you thoroughly analyzed and discussed the final solution?_
-- _Is the final solution significant enough to have solved the problem?_
 
+My initial goal of getting results comparable or better than the results published in the paper written by the technical University of Ostrava [[1]](https://www.dropbox.com/s/2ltuvpw1b1ms2uu/A%20Complex%20Classification%20Approach%20of%20Partial%20Discharges%20from%20Covered%20Conductors%20in%20Real%20Environment%20%28preprint%29.pdf?dl=0) using a Neural Network implementation was achieved. As a recall, here are the scores the Random Forest implementation of the technical University of Ostrava achieved:
+
+| Metric     | Result  |
+|------------|---------|
+| Accuracy   | 99.8    |
+| Precision  | 83.6    |
+| Recall     | 66.7    |
+| F1-Score   | 72.8    |
+
+I was able to achieve better results with the Spectograms/VGG16 approach for Precision, Recall and F1-Score which are the key metrics for the problem to be solved. Even the PCA implementations came close to the benchmark results.
+
+I feel that especially the good score for Recall shows that the Spectograms/VGG16 approach is capable of solving the problem of detecting PD patterns pretty well. However, the MCC results in the Kaggle competition also show that more effort would need to be put into generalizing the solution better.
 
 ## V. Conclusion
-_(approx. 1-2 pages)_
 
 ### Free-Form Visualization
-In this section, you will need to provide some form of visualization that emphasizes an important quality about the project. It is much more free-form, but should reasonably support a significant result or characteristic about the problem that you want to discuss. Questions to ask yourself when writing this section:
-- _Have you visualized a relevant or important quality about the problem, dataset, input data, or results?_
-- _Is the visualization thoroughly analyzed and discussed?_
-- _If a plot is provided, are the axes, title, and datum clearly defined?_
+
+The key finding for me is that tools used to visualize a measurement for humans can generate input layers for machine learning approaches that are trained to recognize images. 
+
+What initially looks like plain rows of numbers:
+
+<img src="content/training_data_example.png"/>
+
+Can be converted to: 
+
+<img src="content/spectogram_sample_signal_10001.png"/>
+
+and be used as an input for a machine learning approach
 
 ### Reflection
-In this section, you will summarize the entire end-to-end problem solution and discuss one or two particular aspects of the project you found interesting or difficult. You are expected to reflect on the project as a whole to show that you have a firm understanding of the entire process employed in your work. Questions to ask yourself when writing this section:
-- _Have you thoroughly summarized the entire process you used for this project?_
-- _Were there any interesting aspects of the project?_
-- _Were there any difficult aspects of the project?_
-- _Does the final model and solution fit your expectations for the problem, and should it be used in a general setting to solve these types of problems?_
+
+The most important part of this project was the exploration of the dataset and the work that went into developing an understanding of the problem domain.
+
+The key to the project was the initial filtering of the data using technologies like Butterworth filters and Wavelet decomposition. 
+
+The analysis of the problem in the time and frequency domain was the most challenging aspect of the project, but also the part where I learned the most. This is where I came to the conclusion that instead of using feature extraction techniques like PCA one could also use tools developed to visualize the time/frequency domain to generate input for neural networks used today mostly for image recognition problems.
+
+It is fascinating to see how Convolutional Neural Networks are able to discover patterns in images like the spectograms, and achieve good classification results for time/frequency problems even when they where originally trained to e.g. distinguish cats from dogs. 
+
 
 ### Improvement
-In this section, you will need to provide discussion as to how one aspect of the implementation you designed could be improved. As an example, consider ways your implementation can be made more general, and what would need to be modified. You do not need to make this improvement, but the potential solutions resulting from these changes are considered and compared/contrasted to your current solution. Questions to ask yourself when writing this section:
-- _Are there further improvements that could be made on the algorithms or techniques you used in this project?_
-- _Were there algorithms or techniques you researched that you did not know how to implement, but would consider using if you knew how?_
-- _If you used your final solution as the new benchmark, do you think an even better solution exists?_
 
-Talk about SMOTE for oversampling here
-Talk about using Wavelets instead of NFFT
+There are a number of things I would have easily be able to spend another couple of weeks to refine and improve in this project.
 
+The solution I choose using 'manual' undersampling and select samples based on categories composed by counting the number of amplitude peaks seems to work. However I would also like to test oversampling solutions like SMOTE or maybe look into various clustering technologies to create better 'bins' of samples. This might be a key improvement to make the solution generalize better.
+
+Another part that I invested significant time in but had to give up on is to develop better ways to create spectogram pictures. The matplolib function I'm currently using [[4]](https://matplotlib.org/3.1.1/api/_as_gen/matplotlib.pyplot.specgram.html) is based on Fast Fourier transform [[5]](https://en.wikipedia.org/wiki/Fast_Fourier_transform). I'm expecting better results when using Continous Wavelet Transform (CWT) [[11]](https://en.wikipedia.org/wiki/Continuous_wavelet_transform) to generate spectogram pictures. However the only open source implementation I found was pywavelet (pywt) [[12]](https://pywavelets.readthedocs.io/en/latest/) and it's capabilities are still pretty bare bones. I could have looked into using a solution using MathWorks Wavelet tools [[13]](https://www.mathworks.com/help/wavelet/ug/time-frequency-analysis-and-continuous-wavelet-transform.html), but I did not want to include tools in this project for which I need a trial license. I am very confident that I could significantly improve the results by using CWT instead of FFT with windowing. 
+
+Also, generating spectogram pictures with higher resolutions, combined with CNNs that can handle larger inputs might improve the implementation. 
+
+While I feel that the spectogram/CNN approach is a very promising one, another approach that might lead to good results, but that I did not have enough time to explore, is to use Wavelet Decomposition with feature reduction. When using Wavelet Decomposition one can generate features from the coefficients like count of peaks, min/max amplitude, etc. in each frequency range. These features can then be used as an input to a neural network too, and might lead to better results than the spectogram approach with even less data needed to be stored.
 
 -----------
+
+### Links to Notebooks and Python models used in this project
+
+1) [Train Data exploration](https://nbviewer.jupyter.org/github/yfauser/capstone-project/blob/master/Test%20Data%20exploration.ipynb)
+
+2) [Train Data Filtering](https://nbviewer.jupyter.org/github/yfauser/capstone-project/blob/master/Train%20Data%20Filtering.ipynb)
+
+3) [Train Data Undersampling](https://nbviewer.jupyter.org/github/yfauser/capstone-project/blob/master/Train%20Data%20Undersampling.ipynb)
+
+4) [Visualization Python Module](https://github.com/yfauser/capstone-project/blob/master/visualization.py)
+
+5) [Filtering Python Module](https://github.com/yfauser/capstone-project/blob/master/filters.py)
+
+6) [Train Data PCA feature reduction](https://nbviewer.jupyter.org/github/yfauser/capstone-project/blob/master/PCA%20feature%20reduction.ipynb)
+
+7) [Train Data Spectogram Creation](https://nbviewer.jupyter.org/github/yfauser/capstone-project/blob/master/Train%20Batch%20Spectogram%20Image%20Creation.ipynb)
+
+8) [PCA with Dense Network Training and validation](https://nbviewer.jupyter.org/github/yfauser/capstone-project/blob/master/Dense%20Network%20with%20PCA.ipynb)
+
+9) [PCA with 1D CNN Training and validation](https://nbviewer.jupyter.org/github/yfauser/capstone-project/blob/master/Convolutional%20Neural%20Network%201D%20with%20PCA.ipynb)
+
+10) [Spectograms with 2D CNN Training and validation](https://nbviewer.jupyter.org/github/yfauser/capstone-project/blob/master/Convolutional%20Neural%20Network%202D%20with%20Spectograms.ipynb)
+
+11) [Spectograms with 2D CNN VGG16 Training and validation](https://nbviewer.jupyter.org/github/yfauser/capstone-project/blob/master/Transfer%20Learning%20CNN%20with%20Spectograms.ipynb)
+
+12) [Test Data Exploration](https://nbviewer.jupyter.org/github/yfauser/capstone-project/blob/master/Test%20Data%20exploration.ipynb)
+
+13) [Test Data Filtering](https://nbviewer.jupyter.org/github/yfauser/capstone-project/blob/master/Test%20Data%20Filtering.ipynb)
+
+14) [Test Data Spectogram Creation](https://nbviewer.jupyter.org/github/yfauser/capstone-project/blob/master/Test%20Batch%20Spectogram%20Image%20Creation.ipynb)
+
+15) [Test Data 2D CNN predictions](https://nbviewer.jupyter.org/github/yfauser/capstone-project/blob/master/Kaggle%20Test%20prediction.ipynb)
+
+16) [Test Data 2D CNN VGG16 predictions](https://nbviewer.jupyter.org/github/yfauser/capstone-project/blob/master/Kaggle%20Test%20prediction%20-%20Transfer%20Learning.ipynb)
 
 ### Links to resources and papers
 
@@ -349,12 +425,8 @@ Talk about using Wavelets instead of NFFT
 
 [[10] Google colab: https://colab.research.google.com](https://colab.research.google.com)
 
-**Before submitting, ask yourself. . .**
+[[11] Continuous wavelet transform Wikipedia entry: https://en.wikipedia.org/wiki/Continuous_wavelet_transform](https://en.wikipedia.org/wiki/Continuous_wavelet_transform)
 
-- Does the project report you’ve written follow a well-organized structure similar to that of the project template?
-- Is each section (particularly **Analysis** and **Methodology**) written in a clear, concise and specific fashion? Are there any ambiguous terms or phrases that need clarification?
-- Would the intended audience of your project be able to understand your analysis, methods, and results?
-- Have you properly proof-read your project report to assure there are minimal grammatical and spelling mistakes?
-- Are all the resources used for this project correctly cited and referenced?
-- Is the code that implements your solution easily readable and properly commented?
-- Does the code execute without error and produce results similar to those reported?
+[[12] Pywavelet: https://pywavelets.readthedocs.io](https://pywavelets.readthedocs.io/en/latest/)
+
+[[13] MathWorks wavelet toolbox: https://www.mathworks.com/help/wavelet/ug/time-frequency-analysis-and-continuous-wavelet-transform.html](https://www.mathworks.com/help/wavelet/ug/time-frequency-analysis-and-continuous-wavelet-transform.html)
